@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { api } from '../lib/api'
 import { useApi } from '../lib/useApi'
-import { num, rate, timestamp } from '../lib/format'
+import { num, rate, timestamp, formatMinor } from '../lib/format'
 import IntegrationSnippets from '../components/IntegrationSnippets'
+import CustomerCommunicationPreview from '../components/CustomerCommunicationPreview'
+import CustomerRecoveryPortalModal from '../components/CustomerRecoveryPortalModal'
 import { ACTION, STANCE, causeColor, tier as tierOf } from '../lib/vocab'
 import {
   Button,
@@ -167,6 +169,10 @@ function Result({ r }) {
   const c = r.classification
   const t = tierOf(r.tier_used)
   const escalated = c.escalated_from_rules
+  const [portalOpen, setPortalOpen] = useState(false)
+
+  const amountMinor = r.event?.amount_minor || 149900
+  const amountFormatted = formatMinor(amountMinor, 'INR')
 
   return (
     <div className="flex flex-col gap-4 animate-in fade-in">
@@ -299,62 +305,61 @@ function Result({ r }) {
         icon={ArrowRight}
         note={r.note}
       >
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <div>
-            <Table>
-              <tbody>
-                <PlanRow term="Action Type">
-                  <span className="font-bold text-ink">{ACTION[r.plan.action]?.label ?? r.plan.action}</span>
-                  <span className="ml-1.5 text-[11.5px] font-mono text-ink-faint">({r.plan.kind})</span>
+        <div className="flex flex-col gap-4">
+          <Table>
+            <tbody>
+              <PlanRow term="Action Type">
+                <span className="font-bold text-ink">{ACTION[r.plan.action]?.label ?? r.plan.action}</span>
+                <span className="ml-1.5 text-[11.5px] font-mono text-ink-faint">({r.plan.kind})</span>
+              </PlanRow>
+              <PlanRow term="Timing Strategy">{r.plan.timing_strategy}</PlanRow>
+              <PlanRow term="Scheduled Dispatch">
+                <span className="font-mono text-ink">{timestamp(r.plan.scheduled_at)}</span>
+                {r.plan.delay_hours ? (
+                  <span className="ml-1.5 text-[11.5px] text-ink-faint">
+                    (+{r.plan.delay_hours.toFixed(1)}h)
+                  </span>
+                ) : null}
+              </PlanRow>
+              {r.plan.companion_action && (
+                <PlanRow term="Companion Action">
+                  {ACTION[r.plan.companion_action]?.label ?? r.plan.companion_action}
                 </PlanRow>
-                <PlanRow term="Timing Strategy">{r.plan.timing_strategy}</PlanRow>
-                <PlanRow term="Scheduled Dispatch">
-                  <span className="font-mono text-ink">{timestamp(r.plan.scheduled_at)}</span>
-                  {r.plan.delay_hours ? (
-                    <span className="ml-1.5 text-[11.5px] text-ink-faint">
-                      (+{r.plan.delay_hours.toFixed(1)}h)
-                    </span>
-                  ) : null}
-                </PlanRow>
-                {r.plan.companion_action && (
-                  <PlanRow term="Companion Action">
-                    {ACTION[r.plan.companion_action]?.label ?? r.plan.companion_action}
-                  </PlanRow>
+              )}
+              {r.plan.alternate_route && (
+                <PlanRow term="Alternate Route">{r.plan.alternate_route}</PlanRow>
+              )}
+              <PlanRow term="Expected Success Rate">
+                <span className="font-mono font-bold text-good">{rate(r.plan.expected_success_rate)}</span>
+              </PlanRow>
+              <PlanRow term="Requires Human Review">
+                {r.plan.requires_human_signoff ? (
+                  <Pill tone="warn">Yes — Pre-dispatch Sign-off Required</Pill>
+                ) : (
+                  <span className="text-ink-soft">Autonomous Clearance</span>
                 )}
-                {r.plan.alternate_route && (
-                  <PlanRow term="Alternate Route">{r.plan.alternate_route}</PlanRow>
-                )}
-                <PlanRow term="Expected Success Rate">
-                  <span className="font-mono font-bold text-good">{rate(r.plan.expected_success_rate)}</span>
-                </PlanRow>
-                <PlanRow term="Requires Human Review">
-                  {r.plan.requires_human_signoff ? (
-                    <Pill tone="warn">Yes — Pre-dispatch Sign-off Required</Pill>
-                  ) : (
-                    <span className="text-ink-soft">Autonomous Clearance</span>
-                  )}
-                </PlanRow>
-              </tbody>
-            </Table>
-            <p className="mt-3 text-[12.5px] leading-relaxed text-ink-soft bg-sunk/40 p-2.5 rounded border border-rule/50">{r.plan.reason}</p>
-          </div>
+              </PlanRow>
+            </tbody>
+          </Table>
+          <p className="text-[12.5px] leading-relaxed text-ink-soft bg-sunk/40 p-2.5 rounded border border-rule/50">{r.plan.reason}</p>
 
-          <div className="min-w-0">
-            <div className="eyebrow text-ink-faint">
-              {r.plan.message ? `Generated Customer Communication (${r.plan.channel})` : 'Zero Customer Contact'}
-            </div>
-            {r.plan.message ? (
-              <pre className="mt-1.5 max-h-72 overflow-auto rounded-lg border border-rule bg-sunk/80 p-3 font-sans text-[12.5px] leading-relaxed whitespace-pre-wrap text-ink">
-                {r.plan.message}
-              </pre>
-            ) : (
-              <div className="mt-1.5 p-4 rounded-lg bg-sunk/40 border border-rule text-[12.5px] leading-relaxed text-ink-soft">
-                This root cause is resolved silently in the background without disturbing the customer.
-              </div>
-            )}
-          </div>
+          {/* Multi-Channel Hinglish & Interactive Recovery Preview */}
+          <CustomerCommunicationPreview
+            plan={r.plan}
+            cause={c.root_cause}
+            amountFormatted={amountFormatted}
+            onOpenPortal={() => setPortalOpen(true)}
+          />
         </div>
       </Panel>
+
+      {/* Simulated Customer Recovery Portal Modal */}
+      <CustomerRecoveryPortalModal
+        open={portalOpen}
+        onClose={() => setPortalOpen(false)}
+        amountFormatted={amountFormatted}
+        cause={c.root_cause}
+      />
     </div>
   )
 }

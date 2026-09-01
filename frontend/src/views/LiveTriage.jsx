@@ -36,6 +36,8 @@ import {
   Upload
 } from 'lucide-react'
 import { useRecoverySound } from '../lib/useRecoverySound'
+import CustomerCommunicationPreview from '../components/CustomerCommunicationPreview'
+import CustomerRecoveryPortalModal from '../components/CustomerRecoveryPortalModal'
 
 const MAX_ROWS = 1000
 
@@ -64,6 +66,7 @@ export default function LiveTriage({ setRunId, onNavigate, health, soundEnabled 
   const [error, setError] = useState(null)
   const [selectedCase, setSelectedCase] = useState(null)
   const [filterCause, setFilterCause] = useState('')
+  const [portalOpen, setPortalOpen] = useState(false)
 
   const [customOpen, setCustomOpen] = useState(false)
   const [customCode, setCustomCode] = useState('CARD_EXPIRED')
@@ -547,6 +550,14 @@ export default function LiveTriage({ setRunId, onNavigate, health, soundEnabled 
               </div>
             </div>
 
+            {/* Multi-Channel Hinglish & Interactive Recovery Preview */}
+            <CustomerCommunicationPreview
+              plan={selectedCase.decision}
+              cause={selectedCase.decision?.classification?.root_cause}
+              amountFormatted={formatMinor(selectedCase.amount_minor, selectedCase.currency)}
+              onOpenPortal={() => setPortalOpen(true)}
+            />
+
             {/* Cryptographic Ledger Link */}
             {selectedCase.ledger_seq != null && (
               <div className="p-3 rounded-lg bg-navy/5 border border-navy/20 flex items-center justify-between">
@@ -568,6 +579,14 @@ export default function LiveTriage({ setRunId, onNavigate, health, soundEnabled 
           </div>
         )}
       </Drawer>
+
+      {/* Simulated Customer Recovery Portal Modal */}
+      <CustomerRecoveryPortalModal
+        open={portalOpen}
+        onClose={() => setPortalOpen(false)}
+        amountFormatted={selectedCase ? formatMinor(selectedCase.amount_minor, selectedCase.currency) : '₹1,499.00'}
+        cause={selectedCase?.decision?.classification?.root_cause}
+      />
 
       {/* Custom Failure Ingestion Drawer */}
       <Drawer
