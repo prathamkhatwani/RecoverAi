@@ -37,9 +37,9 @@ import {
 const MAX_ROWS = 200
 
 const SCENARIOS = [
-  { label: 'Standard Stream', count: 40, pace: 200, seed: '20260824', desc: 'Balanced 40-failure realistic mix' },
-  { label: 'Payday Surge', count: 80, pace: 150, seed: '881293', desc: 'High volume with insufficient funds spikes' },
-  { label: 'Edge-Case Chaos', count: 60, pace: 220, seed: '994411', desc: 'Heavy ambiguous strings & gateway errors' },
+  { label: 'Standard Stream', count: 40, pace: 40, seed: '20260824', desc: 'Balanced 40-failure realistic mix (Fast 40ms pace)' },
+  { label: 'Payday Surge', count: 80, pace: 20, seed: '881293', desc: 'High volume with insufficient funds spikes (Turbo 20ms pace)' },
+  { label: 'Edge-Case Chaos', count: 60, pace: 50, seed: '994411', desc: 'Heavy ambiguous strings & gateway errors' },
 ]
 
 export default function LiveTriage({ setRunId, onNavigate, health }) {
@@ -62,9 +62,9 @@ export default function LiveTriage({ setRunId, onNavigate, health }) {
   const [filterCause, setFilterCause] = useState('')
 
   const [eventCount, setEventCount] = useState(40)
-  const [intervalMs, setIntervalMs] = useState(200)
+  const [intervalMs, setIntervalMs] = useState(40)
   const [seed, setSeed] = useState('20260824')
-  const [useLlm, setUseLlm] = useState(true)
+  const [useLlm, setUseLlm] = useState(false)
 
   const esRef = useRef(null)
   const llmAvailable = health?.llm_mode === 'live'
