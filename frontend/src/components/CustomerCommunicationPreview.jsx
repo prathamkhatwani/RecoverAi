@@ -55,20 +55,21 @@ Agar aap pehle hi pay kar chuke hain, toh kripya is message ko ignore karein.
 — Team Razorpay / RecoverAI`,
     },
     voice_ivr_hinglish: {
-      title: 'IVR Voice Call (Hinglish Voice)',
+      title: 'IVR Voice Call (Female Hindi AI)',
       icon: PhoneCall,
-      badge: 'Automated Call Dispatch',
+      badge: 'Priya AI Voice Agent',
       badgeTone: 'navy',
-      content: `[IVR Ringtone... Picked up]
+      content: `[IVR Ringtone... Call Connected]
 
-"Namaste ${customerName} ji. Yeh aapke subscription payment ke baare me ek zaroori update hai.
+Agent (Priya - AI Voice):
+"Namaste ${customerName} ji. Main Razorpay RecoverAI se Priya baat kar rahi hoon.
 
-Aapka ${amountFormatted} ka payment ${causeReason} decline ho gaya hai.
+Aapka ${amountFormatted} ka subscription payment ${causeReason} decline ho gaya hai.
 
-Apne account ko uninterrupted rakhne ke liye, humne aapke registered WhatsApp aur SMS par ek instant 1-click recovery link bheja hai.
+Apni service ko uninterrupted continue rakhne ke liye, humne aapke registered WhatsApp aur SMS par ek secure 1-click recovery link send kiya hai.
 
-Kripya link par click karke apna preferred payment method chuney. Dhanyawad!"`,
-      speechText: `Namaste ${customerName} ji. Yeh aapke subscription payment ke baare me ek zaroori update hai. Aapka ${amountFormatted} ka payment decline ho gaya hai. Kripya WhatsApp par bheje gaye link par click karke apna payment complete karein. Dhanyawad.`,
+Kripya link par tap karke apna payment complete karein. Agar aap pehle hi pay kar chuke hain toh is call ko ignore karein. Dhanyawad!"`,
+      speechText: `Namaste ${customerName} ji. Main Razorpay RecoverAI se Priya baat kar rahi hoon. Aapka ${amountFormatted} ka subscription payment decline ho gaya hai. Apni service uninterrupted rakhne ke liye, WhatsApp par bheje gaye link par click karke apna payment complete karein. Dhanyawad.`,
     },
     email_en: {
       title: 'Email (Smart English)',
@@ -116,15 +117,52 @@ Billing Operations Team`,
 
     const textToSpeak = messages.voice_ivr_hinglish.speechText
     const utterance = new SpeechSynthesisUtterance(textToSpeak)
-    utterance.rate = 0.95
-    utterance.pitch = 1.0
+    
+    // Female natural voice parameters: pitch 1.15, rate 0.92 (warm, clear, polite Indian cadence)
+    utterance.rate = 0.92
+    utterance.pitch = 1.15
 
-    // Try to find an Indian English or Hindi voice
     const voices = window.speechSynthesis.getVoices()
-    const indianVoice = voices.find(
-      (v) => v.lang.includes('en-IN') || v.lang.includes('hi-IN') || v.name.includes('India')
+    
+    // 1. Look for explicit Female Hindi voices (e.g. Swara, Kalpana, Heera, Google Hindi Female, Neerja, Kavya)
+    let femaleHindiVoice = voices.find(v => 
+      (v.lang.startsWith('hi') || v.lang.includes('IN')) && 
+      (v.name.toLowerCase().includes('swara') || 
+       v.name.toLowerCase().includes('kalpana') || 
+       v.name.toLowerCase().includes('heera') || 
+       v.name.toLowerCase().includes('neerja') || 
+       v.name.toLowerCase().includes('kavya') || 
+       v.name.toLowerCase().includes('aditi') || 
+       v.name.toLowerCase().includes('female') ||
+       v.name.toLowerCase().includes('zira') ||
+       v.name.toLowerCase().includes('natural') ||
+       v.name.includes('हिन्दी'))
     )
-    if (indianVoice) utterance.voice = indianVoice
+
+    // 2. Fallback to any Hindi voice
+    if (!femaleHindiVoice) {
+      femaleHindiVoice = voices.find(v => v.lang.startsWith('hi') || v.lang.includes('hi-IN'))
+    }
+
+    // 3. Fallback to Indian English Female voice
+    if (!femaleHindiVoice) {
+      femaleHindiVoice = voices.find(v => 
+        (v.lang.includes('en-IN') || v.name.toLowerCase().includes('india')) &&
+        (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('heera') || v.name.toLowerCase().includes('zira'))
+      )
+    }
+
+    // 4. Any Indian voice
+    if (!femaleHindiVoice) {
+      femaleHindiVoice = voices.find(v => v.lang.includes('en-IN') || v.name.toLowerCase().includes('india'))
+    }
+
+    // 5. Any female voice with warm pitch
+    if (!femaleHindiVoice) {
+      femaleHindiVoice = voices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('samantha'))
+    }
+
+    if (femaleHindiVoice) utterance.voice = femaleHindiVoice
 
     utterance.onend = () => setSpeaking(false)
     utterance.onerror = () => setSpeaking(false)
@@ -193,9 +231,15 @@ Billing Operations Team`,
       {/* Active Message Preview Card */}
       <div className="mt-1 relative rounded-lg border border-rule bg-sunk/60 p-4">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="eyebrow text-ink-faint">Channel Payload</span>
             <Pill tone={activeMsg.badgeTone}>{activeMsg.badge}</Pill>
+            {channel === 'voice_ivr_hinglish' && speaking && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-navy/15 text-navy font-semibold text-[11px] animate-pulse border border-navy/30">
+                <Volume2 className="size-3" />
+                <span>Priya Speaking (Hindi AI)</span>
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -203,10 +247,10 @@ Billing Operations Team`,
               <Button
                 size="sm"
                 tone={speaking ? 'danger' : 'primary'}
-                icon={speaking ? Square : Play}
+                icon={speaking ? Square : PhoneCall}
                 onClick={handleSpeak}
               >
-                {speaking ? 'Stop Audio' : 'Play Voice IVR Sample'}
+                {speaking ? 'End Voice Call' : 'Call Customer (Female Hindi Voice AI)'}
               </Button>
             )}
 
