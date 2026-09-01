@@ -31,7 +31,8 @@ import {
   Clock,
   ArrowRight,
   TrendingUp,
-  CreditCard
+  CreditCard,
+  Plus
 } from 'lucide-react'
 
 const MAX_ROWS = 200
@@ -61,6 +62,14 @@ export default function LiveTriage({ setRunId, onNavigate, health }) {
   const [selectedCase, setSelectedCase] = useState(null)
   const [filterCause, setFilterCause] = useState('')
 
+  const [customOpen, setCustomOpen] = useState(false)
+  const [customCode, setCustomCode] = useState('CARD_EXPIRED')
+  const [customMessage, setCustomMessage] = useState('Card expiration date passed')
+  const [customGateway, setCustomGateway] = useState('orbitpg')
+  const [customAmount, setCustomAmount] = useState('1499.00')
+  const [customType, setCustomType] = useState('card')
+  const [customSubmitting, setCustomSubmitting] = useState(false)
+
   const [eventCount, setEventCount] = useState(40)
   const [intervalMs, setIntervalMs] = useState(40)
   const [seed, setSeed] = useState('20260824')
@@ -76,6 +85,49 @@ export default function LiveTriage({ setRunId, onNavigate, health }) {
   }, [])
 
   useEffect(() => stop, [stop])
+
+  const handleCustomSubmit = async (e) => {
+    e?.preventDefault()
+    setCustomSubmitting(true)
+    try {
+      const amountMinor = Math.round(Number(customAmount || 0) * 100)
+      const res = await api.classify({
+        raw_code: customCode,
+        raw_message: customMessage,
+        gateway: customGateway,
+        amount_minor: amountMinor,
+        use_llm: useLlm && llmAvailable,
+      })
+
+      const customEvent = {
+        index: rows.length + 1,
+        event: {
+          id: `custom_${Date.now()}`,
+          gateway: customGateway,
+          raw_code: customCode,
+          raw_message: customMessage,
+          occurred_at: new Date().toISOString(),
+        },
+        amount_minor: amountMinor,
+        currency: 'INR',
+        method: { type: customType, last4: '9988' },
+        truth: res.classification?.root_cause,
+        decision: {
+          classification: res.classification,
+          final_action: res.plan?.action,
+          blocked: res.plan?.requires_human_signoff,
+          block_reason: res.plan?.requires_human_signoff ? 'Human Sign-off Required' : null,
+        },
+      }
+
+      setRows((prev) => [customEvent, ...prev])
+      setCustomOpen(false)
+    } catch (err) {
+      alert(`Ingest failed: ${err.message}`)
+    } finally {
+      setCustomSubmitting(false)
+    }
+  }
 
   const start = useCallback(() => {
     stop()
@@ -153,15 +205,20 @@ export default function LiveTriage({ setRunId, onNavigate, health }) {
         }
         note="Streams real payment failures from 3 gateways. The classifier diagnoses each failure and routes it to exactly one bounded action under guardrails."
         actions={
-          running ? (
-            <Button tone="danger" icon={Square} onClick={stop}>
-              Stop Stream
+          <div className="flex items-center gap-2">
+            <Button tone="default" icon={Plus} onClick={() => setCustomOpen(true)}>
+              Ingest Custom Failure
             </Button>
-          ) : (
-            <Button tone="primary" icon={Play} onClick={start}>
-              Start Stream
-            </Button>
-          )
+            {running ? (
+              <Button tone="danger" icon={Square} onClick={stop}>
+                Stop Stream
+              </Button>
+            ) : (
+              <Button tone="primary" icon={Play} onClick={start}>
+                Start Stream
+              </Button>
+            )}
+          </div>
         }
       >
         <div className="flex flex-col gap-3">
@@ -400,6 +457,70 @@ export default function LiveTriage({ setRunId, onNavigate, health }) {
             )}
           </div>
         )}
+      </Drawer>
+
+      {/* Custom Failure Ingestion Drawer */}
+      <Drawer
+        open={customOpen}
+        onClose={() => setCustomOpen(false)}
+        title="Ingest Custom Payment Failure"
+        subtitle="Manually input a custom decline string or code to test real-time triage."
+      >
+        <form onSubmit={handleCustomSubmit} className="flex flex-col gap-4 text-[13px]">
+          <Field label="Decline Code" hint="Raw code from payment gateway (e.g. CARD_EXPIRED, 51, RC-91)">
+            <Input value={customCode} onChange={setCustomCode} placeholder="CARD_EXPIRED" />
+          </Field>
+
+          <Field label="Decline Message" hint="Free-text error message returned by processor">
+            <textarea
+              value={customMessage}
+              onChange={(e) => setCustomMessage(e.target.value)}
+              rows={2}
+              className="w-full rounded border border-rule bg-sunk/60 px-3 py-2 font-mono text-[13px] text-ink focus:border-navy focus:outline-none"
+              placeholder="Transaction failed due to expired card"
+            />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Gateway">
+              <select
+                value={customGateway}
+                onChange={(e) => setCustomGateway(e.target.value)}
+                className="border border-rule bg-sunk px-2.5 py-1.5 rounded font-mono text-[13px] text-ink cursor-pointer"
+              >
+                <option value="orbitpg">OrbitPG</option>
+                <option value="stripe">Stripe</option>
+                <option value="razorpay">Razorpay</option>
+              </select>
+            </Field>
+
+            <Field label="Amount (₹)">
+              <Input value={customAmount} onChange={setCustomAmount} placeholder="1499.00" />
+            </Field>
+          </div>
+
+          <Field label="Payment Method">
+            <select
+              value={customType}
+              onChange={(e) => setCustomType(e.target.value)}
+              className="border border-rule bg-sunk px-2.5 py-1.5 rounded font-mono text-[13px] text-ink cursor-pointer"
+            >
+              <option value="card">Credit / Debit Card</option>
+              <option value="upi">UPI Auto-Pay</option>
+              <option value="mandate">E-Mandate / NACH</option>
+              <option value="netbanking">Net Banking</option>
+            </select>
+          </Field>
+
+          <div className="pt-3 border-t border-rule flex justify-end gap-2">
+            <Button tone="subtle" onClick={() => setCustomOpen(false)}>
+              Cancel
+            </Button>
+            <Button tone="primary" type="submit" icon={Plus} disabled={customSubmitting}>
+              {customSubmitting ? 'Ingesting…' : 'Submit Custom Failure'}
+            </Button>
+          </div>
+        </form>
       </Drawer>
     </div>
   )

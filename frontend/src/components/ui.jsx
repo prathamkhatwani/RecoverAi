@@ -382,18 +382,32 @@ export function Legend({ items }) {
 }
 
 /** Sequential ramp for magnitude in the per-cause matrix */
-const SEQ = ['#1a2240', '#1e3a6e', '#1d4ed8', '#3b82f6', '#60a5fa']
+const SEQ_VARS = [
+  'var(--color-seq-1)',
+  'var(--color-seq-2)',
+  'var(--color-seq-3)',
+  'var(--color-seq-4)',
+  'var(--color-seq-5)',
+]
 
 export function HeatCell({ fraction, children, title }) {
   const f = Number.isFinite(fraction) ? Math.min(Math.max(fraction, 0), 1) : 0
-  const step = f === 0 ? 0 : Math.min(SEQ.length - 1, Math.floor(f * SEQ.length))
+  const step = f === 0 ? 0 : Math.min(SEQ_VARS.length, Math.ceil(f * SEQ_VARS.length))
+
+  let textClass = 'text-ink'
+  if (step >= 4) {
+    textClass = 'text-white font-bold'
+  } else if (step === 3) {
+    textClass = 'text-ink dark:text-white font-bold'
+  } else if (step > 0) {
+    textClass = 'text-ink font-semibold'
+  }
+
   return (
     <td
       title={title}
-      className={`border-b border-rule/40 px-3 py-2.5 text-right font-mono text-[12.5px] transition-colors ${
-        step >= 2 ? 'text-white font-bold' : 'text-ink'
-      }`}
-      style={{ background: f === 0 ? 'transparent' : SEQ[step] }}
+      className={`border-b border-rule/40 px-3 py-2.5 text-right font-mono text-[12.5px] transition-colors ${textClass}`}
+      style={{ background: step === 0 ? 'transparent' : SEQ_VARS[step - 1] }}
     >
       {children}
     </td>
@@ -401,7 +415,7 @@ export function HeatCell({ fraction, children, title }) {
 }
 
 export function seqSwatches() {
-  return SEQ
+  return SEQ_VARS
 }
 
 /* ================================================================

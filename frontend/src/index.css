@@ -45,11 +45,11 @@
   --color-warn-soft: rgba(251, 191, 36, 0.10);
 
   /* ── Sequential Heatmap ── */
-  --color-seq-1: #1a2240;
-  --color-seq-2: #1e3a6e;
+  --color-seq-1: rgba(79, 143, 247, 0.12);
+  --color-seq-2: rgba(79, 143, 247, 0.25);
   --color-seq-3: #1d4ed8;
-  --color-seq-4: #3b82f6;
-  --color-seq-5: #60a5fa;
+  --color-seq-4: #2563eb;
+  --color-seq-5: #3b82f6;
 
   /* ── Typography Stack ── */
   --font-display: "IBM Plex Sans Condensed", "Arial Narrow", ui-sans-serif, sans-serif;
@@ -97,11 +97,11 @@
   --color-warn: #ca8a04;
   --color-warn-soft: rgba(202, 138, 4, 0.06);
 
-  --color-seq-1: #ebeef5;
-  --color-seq-2: #bfdbfe;
+  --color-seq-1: #eff6ff;
+  --color-seq-2: #dbeafe;
   --color-seq-3: #93c5fd;
-  --color-seq-4: #60a5fa;
-  --color-seq-5: #2563eb;
+  --color-seq-4: #3b82f6;
+  --color-seq-5: #1d4ed8;
 
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.03);
   --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.06);
