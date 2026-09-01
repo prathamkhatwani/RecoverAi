@@ -22,6 +22,7 @@ export default function CustomerCommunicationPreview({
   onOpenPortal
 }) {
   const [channel, setChannel] = useState('whatsapp_hinglish')
+  const [ivrLang, setIvrLang] = useState('hi') // 'hi' or 'en'
   const [speaking, setSpeaking] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -55,21 +56,34 @@ Agar aap pehle hi pay kar chuke hain, toh kripya is message ko ignore karein.
 — Team Razorpay / RecoverAI`,
     },
     voice_ivr_hinglish: {
-      title: 'IVR Voice Call (Female Hindi AI)',
+      title: 'IVR Voice Call (Hindi & English AI)',
       icon: PhoneCall,
-      badge: 'Priya AI Voice Agent',
+      badge: ivrLang === 'hi' ? 'प्रिया AI (शुद्ध हिंदी IVR)' : 'Priya AI (English IVR)',
       badgeTone: 'navy',
-      content: `[IVR Ringtone... Call Connected]
+      content: ivrLang === 'hi'
+        ? `[IVR Telecom Announcement... Call Connected]
 
-Agent (Priya - AI Voice):
-"Namaste ${customerName} ji. Main Razorpay RecoverAI se Priya baat kar rahi hoon.
+आवाज (प्रिया - टेलीकॉम AI):
+"नमस्ते ${customerName} जी। यह रेज़रपे रिकवर एआई से आपके सब्सक्रिप्शन भुगतान के बारे में एक आवश्यक सूचना है।
 
-Aapka ${amountFormatted} ka subscription payment ${causeReason} decline ho gaya hai.
+आपका ${amountFormatted} का सब्सक्रिप्शन भुगतान आपके बैंक द्वारा पूरा नहीं किया जा सका।
 
-Apni service ko uninterrupted continue rakhne ke liye, humne aapke registered WhatsApp aur SMS par ek secure 1-click recovery link send kiya hai.
+अपनी सेवा को बिना किसी रुकावट के जारी रखने के लिए, हमने आपके पंजीकृत व्हाट्सएप और एसएमएस पर एक सुरक्षित वन-क्लिक पेमेंट लिंक भेजा है।
 
-Kripya link par tap karke apna payment complete karein. Agar aap pehle hi pay kar chuke hain toh is call ko ignore karein. Dhanyawad!"`,
-      speechText: `Namaste ${customerName} ji. Main Razorpay RecoverAI se Priya baat kar rahi hoon. Aapka ${amountFormatted} ka subscription payment decline ho gaya hai. Apni service uninterrupted rakhne ke liye, WhatsApp par bheje gaye link par click karke apna payment complete karein. Dhanyawad.`,
+कृपया लिंक पर टैप करके अपना पसंदीदा भुगतान विकल्प चुनें। धन्यवाद!"`
+        : `[IVR Telecom Announcement... Call Connected]
+
+Agent (Priya - Corporate AI Voice):
+"Hello ${customerName}. This is an automated notification from Razorpay Recover AI regarding your subscription.
+
+Your scheduled payment of ${amountFormatted} could not be processed by your bank.
+
+To prevent any service interruption, we have sent a secure one-click payment link to your registered mobile number and WhatsApp.
+
+Please tap the link to authorize your renewal. Thank you!"`,
+      speechText: ivrLang === 'hi'
+        ? `नमस्ते ${customerName} जी। यह रेज़रपे रिकवर एआई से आपके सब्सक्रिप्शन भुगतान के बारे में एक आवश्यक सूचना है। आपका ${amountFormatted} का सब्सक्रिप्शन भुगतान आपके बैंक द्वारा पूरा नहीं किया जा सका। अपनी सेवा को बिना किसी रुकावट के जारी रखने के लिए, हमने आपके पंजीकृत व्हाट्सएप और एसएमएस पर एक सुरक्षित वन-क्लिक पेमेंट लिंक भेजा है। कृपया लिंक पर टैप करके अपना भुगतान पूरा करें। धन्यवाद।`
+        : `Hello ${customerName}. This is an automated payment update from Razorpay Recover AI. Your scheduled payment of ${amountFormatted} was declined by your bank. We have sent a secure one-click recovery link to your registered WhatsApp and mobile number. Please tap the link to complete your payment. Thank you.`,
     },
     email_en: {
       title: 'Email (Smart English)',
@@ -117,52 +131,45 @@ Billing Operations Team`,
 
     const textToSpeak = messages.voice_ivr_hinglish.speechText
     const utterance = new SpeechSynthesisUtterance(textToSpeak)
-    
-    // Female natural voice parameters: pitch 1.15, rate 0.92 (warm, clear, polite Indian cadence)
-    utterance.rate = 0.92
-    utterance.pitch = 1.15
-
     const voices = window.speechSynthesis.getVoices()
-    
-    // 1. Look for explicit Female Hindi voices (e.g. Swara, Kalpana, Heera, Google Hindi Female, Neerja, Kavya)
-    let femaleHindiVoice = voices.find(v => 
-      (v.lang.startsWith('hi') || v.lang.includes('IN')) && 
-      (v.name.toLowerCase().includes('swara') || 
-       v.name.toLowerCase().includes('kalpana') || 
-       v.name.toLowerCase().includes('heera') || 
-       v.name.toLowerCase().includes('neerja') || 
-       v.name.toLowerCase().includes('kavya') || 
-       v.name.toLowerCase().includes('aditi') || 
-       v.name.toLowerCase().includes('female') ||
-       v.name.toLowerCase().includes('zira') ||
-       v.name.toLowerCase().includes('natural') ||
-       v.name.includes('हिन्दी'))
-    )
 
-    // 2. Fallback to any Hindi voice
-    if (!femaleHindiVoice) {
-      femaleHindiVoice = voices.find(v => v.lang.startsWith('hi') || v.lang.includes('hi-IN'))
+    if (ivrLang === 'hi') {
+      // 🇮🇳 Hindi IVR Configuration
+      utterance.lang = 'hi-IN'
+      utterance.rate = 0.88 // Fluent, clear telecom announcement speed
+      utterance.pitch = 1.08 // Warm, natural female voice pitch
+
+      // Priority: Native Hindi Female voices (Swara, Kalpana, Google हिन्दी, etc.)
+      const hindiVoice = voices.find(v => 
+        (v.lang.startsWith('hi') || v.lang.includes('IN')) &&
+        (v.name.includes('हिन्दी') ||
+         v.name.toLowerCase().includes('swara') ||
+         v.name.toLowerCase().includes('kalpana') ||
+         v.name.toLowerCase().includes('hindi') ||
+         v.name.toLowerCase().includes('female'))
+      ) || voices.find(v => v.lang.startsWith('hi') || v.lang.includes('hi-IN'))
+
+      if (hindiVoice) utterance.voice = hindiVoice
+    } else {
+      // 🌐 English IVR Configuration
+      utterance.lang = 'en-IN'
+      utterance.rate = 0.92
+      utterance.pitch = 1.12
+
+      // Priority: Indian English / British / Natural Female voices
+      const englishVoice = voices.find(v => 
+        (v.lang.includes('en-IN') || v.lang.includes('en-GB') || v.lang.includes('en-US')) &&
+        (v.name.toLowerCase().includes('heera') ||
+         v.name.toLowerCase().includes('neerja') ||
+         v.name.toLowerCase().includes('kavya') ||
+         v.name.toLowerCase().includes('aditi') ||
+         v.name.toLowerCase().includes('female') ||
+         v.name.toLowerCase().includes('zira') ||
+         v.name.toLowerCase().includes('samantha'))
+      ) || voices.find(v => v.lang.startsWith('en'))
+
+      if (englishVoice) utterance.voice = englishVoice
     }
-
-    // 3. Fallback to Indian English Female voice
-    if (!femaleHindiVoice) {
-      femaleHindiVoice = voices.find(v => 
-        (v.lang.includes('en-IN') || v.name.toLowerCase().includes('india')) &&
-        (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('heera') || v.name.toLowerCase().includes('zira'))
-      )
-    }
-
-    // 4. Any Indian voice
-    if (!femaleHindiVoice) {
-      femaleHindiVoice = voices.find(v => v.lang.includes('en-IN') || v.name.toLowerCase().includes('india'))
-    }
-
-    // 5. Any female voice with warm pitch
-    if (!femaleHindiVoice) {
-      femaleHindiVoice = voices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('samantha'))
-    }
-
-    if (femaleHindiVoice) utterance.voice = femaleHindiVoice
 
     utterance.onend = () => setSpeaking(false)
     utterance.onerror = () => setSpeaking(false)
@@ -230,6 +237,49 @@ Billing Operations Team`,
 
       {/* Active Message Preview Card */}
       <div className="mt-1 relative rounded-lg border border-rule bg-sunk/60 p-4">
+        {channel === 'voice_ivr_hinglish' && (
+          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-surface border border-rule/80 mb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="eyebrow text-ink-faint">IVR Voice Language:</span>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (speaking) window.speechSynthesis.cancel()
+                    setSpeaking(false)
+                    setIvrLang('hi')
+                  }}
+                  className={`px-3 py-1 rounded-md text-[11.5px] font-semibold transition-all cursor-pointer border ${
+                    ivrLang === 'hi'
+                      ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40 shadow-xs'
+                      : 'bg-sunk text-ink-soft border-rule hover:text-ink'
+                  }`}
+                >
+                  🇮🇳 शुद्ध हिंदी (Fluent Hindi IVR)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (speaking) window.speechSynthesis.cancel()
+                    setSpeaking(false)
+                    setIvrLang('en')
+                  }}
+                  className={`px-3 py-1 rounded-md text-[11.5px] font-semibold transition-all cursor-pointer border ${
+                    ivrLang === 'en'
+                      ? 'bg-navy/15 text-navy border-navy/40 shadow-xs'
+                      : 'bg-sunk text-ink-soft border-rule hover:text-ink'
+                  }`}
+                >
+                  🌐 English (Fluent Corporate IVR)
+                </button>
+              </div>
+            </div>
+            <span className="text-[11px] font-mono text-ink-faint hidden sm:inline">
+              {ivrLang === 'hi' ? 'देवनागरी न्यूरल वॉइस' : 'Corporate Neural Voice'}
+            </span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="eyebrow text-ink-faint">Channel Payload</span>
@@ -237,7 +287,7 @@ Billing Operations Team`,
             {channel === 'voice_ivr_hinglish' && speaking && (
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-navy/15 text-navy font-semibold text-[11px] animate-pulse border border-navy/30">
                 <Volume2 className="size-3" />
-                <span>Priya Speaking (Hindi AI)</span>
+                <span>{ivrLang === 'hi' ? 'प्रिया बोल रही हैं (हिंदी AI)' : 'Priya Speaking (English AI)'}</span>
               </span>
             )}
           </div>
@@ -250,7 +300,7 @@ Billing Operations Team`,
                 icon={speaking ? Square : PhoneCall}
                 onClick={handleSpeak}
               >
-                {speaking ? 'End Voice Call' : 'Call Customer (Female Hindi Voice AI)'}
+                {speaking ? 'End Call' : ivrLang === 'hi' ? '🔊 कॉल करें (शुद्ध हिंदी AI)' : '🔊 Call Customer (English AI)'}
               </Button>
             )}
 
