@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../lib/api'
 import { useApi } from '../lib/useApi'
 import { num, rate, timestamp } from '../lib/format'
+import IntegrationSnippets from '../components/IntegrationSnippets'
 import { ACTION, STANCE, causeColor, tier as tierOf } from '../lib/vocab'
 import {
   Button,
@@ -148,6 +149,14 @@ export default function Classify({ health }) {
       </Panel>
 
       {result && <Result r={result} />}
+
+      {/* API Integration Code Snippets */}
+      <IntegrationSnippets
+        rawCode={rawCode}
+        rawMessage={rawMessage}
+        gateway={gateway}
+        amount={amount}
+      />
     </div>
   )
 }

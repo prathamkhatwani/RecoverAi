@@ -9,6 +9,7 @@ import Guardrails from './views/Guardrails'
 import Ledger from './views/Ledger'
 import Classify from './views/Classify'
 import Method from './views/Method'
+import ROICalculator from './views/ROICalculator'
 import {
   Activity,
   BarChart3,
@@ -17,6 +18,7 @@ import {
   Database,
   Zap,
   BookOpen,
+  Calculator,
   Sun,
   Moon,
   HelpCircle,
@@ -24,6 +26,8 @@ import {
   Cpu,
   Sparkles,
   ArrowRight,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 
 const VIEWS = [
@@ -34,12 +38,14 @@ const VIEWS = [
   { key: 'ledger', label: 'Ledger', icon: Database, component: Ledger, note: 'Hash-chained cryptographic decision log', shortcut: '5' },
   { key: 'classify', label: 'Classify', icon: Zap, component: Classify, note: 'Test arbitrary decline codes & messages', shortcut: '6' },
   { key: 'method', label: 'Method', icon: BookOpen, component: Method, note: 'Simulation assumptions, gateway specs & config', shortcut: '7' },
+  { key: 'roi', label: 'ROI Calculator', icon: Calculator, component: ROICalculator, note: 'Project annual revenue recovery savings', shortcut: '8' },
 ]
 
 export default function App() {
   const [view, setView] = useState('live')
   const [runId, setRunId] = useState(null)
   const [theme, setTheme] = useState(() => localStorage.getItem('rr_theme') || 'dark')
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('rr_sound') !== 'off')
   const [guideOpen, setGuideOpen] = useState(false)
   const health = useApi(() => api.health(), [])
 
@@ -48,6 +54,11 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('rr_theme', theme)
   }, [theme])
+
+  // Persist sound preference
+  useEffect(() => {
+    localStorage.setItem('rr_sound', soundEnabled ? 'on' : 'off')
+  }, [soundEnabled])
 
   // Keyboard shortcut listener (1-7)
   useEffect(() => {
@@ -141,6 +152,17 @@ export default function App() {
               >
                 {theme === 'dark' ? <Sun className="size-3.5 text-warn" /> : <Moon className="size-3.5 text-navy" />}
               </button>
+
+              <button
+                type="button"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                title={soundEnabled ? 'Mute recovery chimes' : 'Enable recovery chimes'}
+                className={`p-1.5 rounded-md border border-rule/50 bg-surface-raised/40 hover:bg-surface-raised cursor-pointer transition-all duration-150 ${
+                  soundEnabled ? 'text-good' : 'text-ink-faint'
+                }`}
+              >
+                {soundEnabled ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
+              </button>
             </div>
           </div>
         </div>
@@ -179,7 +201,7 @@ export default function App() {
 
       {/* ━━━ Content ━━━ */}
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 py-5 sm:px-6">
-        <Current runId={runId} setRunId={setRunId} onNavigate={setView} health={h} />
+        <Current runId={runId} setRunId={setRunId} onNavigate={setView} health={h} soundEnabled={soundEnabled} />
       </main>
 
       {/* ━━━ Footer ━━━ */}

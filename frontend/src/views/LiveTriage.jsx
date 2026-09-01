@@ -32,18 +32,21 @@ import {
   ArrowRight,
   TrendingUp,
   CreditCard,
-  Plus
+  Plus,
+  Upload
 } from 'lucide-react'
+import { useRecoverySound } from '../lib/useRecoverySound'
 
-const MAX_ROWS = 200
+const MAX_ROWS = 1000
 
 const SCENARIOS = [
   { label: 'Standard Stream', count: 40, pace: 40, seed: '20260824', desc: 'Balanced 40-failure realistic mix (Fast 40ms pace)' },
   { label: 'Payday Surge', count: 80, pace: 20, seed: '881293', desc: 'High volume with insufficient funds spikes (Turbo 20ms pace)' },
+  { label: '500 Failures Stream', count: 500, pace: 20, seed: '20260824', desc: 'Large cohort of 500 payment failures' },
   { label: 'Edge-Case Chaos', count: 60, pace: 50, seed: '994411', desc: 'Heavy ambiguous strings & gateway errors' },
 ]
 
-export default function LiveTriage({ setRunId, onNavigate, health }) {
+export default function LiveTriage({ setRunId, onNavigate, health, soundEnabled }) {
   const taxonomy = useApi(() => api.taxonomy(), [])
   const causeMeta = useMemo(() => {
     const map = {}
@@ -75,8 +78,13 @@ export default function LiveTriage({ setRunId, onNavigate, health }) {
   const [seed, setSeed] = useState('20260824')
   const [useLlm, setUseLlm] = useState(false)
 
+  const [csvUploading, setCsvUploading] = useState(false)
+  const [csvProgress, setCsvProgress] = useState(null)
+
   const esRef = useRef(null)
+  const fileInputRef = useRef(null)
   const llmAvailable = health?.llm_mode === 'live'
+  const { play: playChime } = useRecoverySound(soundEnabled)
 
   const stop = useCallback(() => {
     esRef.current?.close()
@@ -160,6 +168,10 @@ export default function LiveTriage({ setRunId, onNavigate, health }) {
         const next = [d, ...prev]
         return next.length > MAX_ROWS ? next.slice(0, MAX_ROWS) : next
       })
+      // Chime on high-value successful recovery
+      if (d.decision?.final_action && !d.decision?.blocked && d.amount_minor >= 100000) {
+        playChime()
+      }
     })
 
     es.addEventListener('run_end', (e) => {
@@ -177,6 +189,86 @@ export default function LiveTriage({ setRunId, onNavigate, health }) {
     setEventCount(sc.count)
     setIntervalMs(sc.pace)
     setSeed(sc.seed)
+  }
+
+  const handleBulkUpload = async (file) => {
+    if (!file) return
+    setCsvUploading(true)
+    setCsvProgress({ done: 0, total: 0, errors: 0 })
+    try {
+      const text = await file.text()
+      let records = []
+
+      if (file.name.endsWith('.json')) {
+        const parsed = JSON.parse(text)
+        records = Array.isArray(parsed) ? parsed : [parsed]
+      } else {
+        // CSV parsing: first row is header
+        const lines = text.trim().split('\n')
+        if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row')
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''))
+        for (let i = 1; i < lines.length; i++) {
+          const vals = lines[i].split(',').map(v => v.trim().replace(/^['"]|['"]$/g, ''))
+          const row = {}
+          headers.forEach((h, idx) => { row[h] = vals[idx] || '' })
+          records.push({
+            raw_code: row.raw_code || row.code || row.decline_code || '',
+            raw_message: row.raw_message || row.message || row.decline_message || row.error || '',
+            gateway: row.gateway || 'orbitpg',
+            amount_minor: Number(row.amount_minor || row.amount || 0),
+          })
+        }
+      }
+
+      setCsvProgress({ done: 0, total: records.length, errors: 0 })
+
+      for (let i = 0; i < records.length; i++) {
+        try {
+          const rec = records[i]
+          const res = await api.classify({
+            raw_code: rec.raw_code || 'UNKNOWN',
+            raw_message: rec.raw_message || '',
+            gateway: rec.gateway || 'orbitpg',
+            amount_minor: Number(rec.amount_minor || 100000),
+            use_llm: useLlm && llmAvailable,
+          })
+
+          const event = {
+            index: rows.length + i + 1,
+            event: {
+              id: `bulk_${Date.now()}_${i}`,
+              gateway: rec.gateway || 'orbitpg',
+              raw_code: rec.raw_code || 'UNKNOWN',
+              raw_message: rec.raw_message || '',
+              occurred_at: new Date().toISOString(),
+            },
+            amount_minor: Number(rec.amount_minor || 100000),
+            currency: rec.currency || 'INR',
+            method: { type: rec.method || 'card', last4: rec.last4 || '0000' },
+            truth: res.classification?.root_cause,
+            decision: {
+              classification: res.classification,
+              final_action: res.plan?.action,
+              blocked: res.plan?.requires_human_signoff,
+              block_reason: res.plan?.requires_human_signoff ? 'Human Sign-off Required' : null,
+            },
+          }
+
+          setRows(prev => [event, ...prev])
+          if (event.decision?.final_action && !event.decision?.blocked && event.amount_minor >= 100000) {
+            playChime()
+          }
+          setCsvProgress(prev => ({ ...prev, done: i + 1 }))
+        } catch {
+          setCsvProgress(prev => ({ ...prev, done: i + 1, errors: prev.errors + 1 }))
+        }
+      }
+    } catch (err) {
+      alert(`Upload failed: ${err.message}`)
+    } finally {
+      setCsvUploading(false)
+      setTimeout(() => setCsvProgress(null), 3000)
+    }
   }
 
   const judged = rows.filter((r) => r.decision?.classification?.root_cause)
@@ -209,6 +301,24 @@ export default function LiveTriage({ setRunId, onNavigate, health }) {
             <Button tone="default" icon={Plus} onClick={() => setCustomOpen(true)}>
               Ingest Custom Failure
             </Button>
+            <Button
+              tone="default"
+              icon={Upload}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={csvUploading}
+            >
+              {csvUploading ? `Uploading (${csvProgress?.done ?? 0}/${csvProgress?.total ?? 0})` : 'Upload CSV/JSON'}
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.json"
+              className="hidden"
+              onChange={(e) => {
+                handleBulkUpload(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
             {running ? (
               <Button tone="danger" icon={Square} onClick={stop}>
                 Stop Stream
@@ -224,7 +334,7 @@ export default function LiveTriage({ setRunId, onNavigate, health }) {
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-end gap-3">
             <Field label="Failures Count">
-              <Input type="number" min={1} max={400} value={eventCount} onChange={setEventCount} className="w-24" />
+              <Input type="number" min={1} max={1000} value={eventCount} onChange={setEventCount} className="w-24" />
             </Field>
             <Field label="Pace (ms)" hint="Delay per event">
               <Input type="number" min={0} max={5000} step={20} value={intervalMs} onChange={setIntervalMs} className="w-24" />

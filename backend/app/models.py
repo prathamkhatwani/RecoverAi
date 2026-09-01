@@ -400,7 +400,7 @@ class BenchmarkRequest(BaseModel):
 
 
 class LiveStreamRequest(BaseModel):
-    event_count: int = Field(default=40, ge=1, le=400)
+    event_count: int = Field(default=40, ge=1, le=1000)
     seed: int | None = None
     use_llm: bool = True
     interval_ms: int = Field(default=220, ge=0, le=5000)

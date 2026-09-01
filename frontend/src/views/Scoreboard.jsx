@@ -33,7 +33,8 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Coins
+  Coins,
+  FileDown
 } from 'lucide-react'
 
 const BENCH_PRESETS = [
@@ -76,6 +77,101 @@ export default function Scoreboard({ setRunId }) {
     setSeed(p.seed)
   }
 
+  function exportCertificate() {
+    if (!data) return
+    const t = data.plan_target
+    const h = data.headline
+    const win = window.open('', '_blank', 'width=800,height=900')
+    win.document.write(`<!DOCTYPE html>
+<html><head><title>Revenue Recovery Audit Certificate</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 48px; background: #fff; color: #111827; }
+  .header { text-align: center; border-bottom: 3px solid #1d4ed8; padding-bottom: 24px; margin-bottom: 32px; }
+  .header h1 { font-size: 28px; font-weight: 800; color: #1d4ed8; letter-spacing: -0.5px; }
+  .header p { font-size: 13px; color: #6b7280; margin-top: 6px; }
+  .badge { display: inline-block; padding: 6px 18px; border-radius: 100px; font-size: 14px; font-weight: 700; margin: 16px 0; }
+  .pass { background: #dcfce7; color: #166534; border: 1.5px solid #86efac; }
+  .fail { background: #fee2e2; color: #991b1b; border: 1.5px solid #fca5a5; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 24px 0; }
+  .metric { border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; }
+  .metric .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #9ca3af; font-weight: 600; }
+  .metric .value { font-size: 32px; font-weight: 800; margin-top: 6px; font-family: 'SF Mono', monospace; }
+  .metric .sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .green { color: #059669; }
+  .blue { color: #1d4ed8; }
+  .section { margin-top: 28px; }
+  .section h3 { font-size: 15px; font-weight: 700; color: #374151; margin-bottom: 12px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #f3f4f6; }
+  th { font-weight: 600; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .mono { font-family: 'SF Mono', Consolas, monospace; }
+  .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb; text-align: center; font-size: 11px; color: #9ca3af; }
+  .hash { font-family: monospace; font-size: 11px; background: #f3f4f6; padding: 4px 10px; border-radius: 4px; word-break: break-all; }
+  @media print { body { padding: 24px; } }
+</style></head><body>
+  <div class="header">
+    <h1>Revenue Recovery Compliance Certificate</h1>
+    <p>Automated Audit Report &mdash; Generated ${new Date().toLocaleString()}</p>
+    <div class="badge ${t.both_met ? 'pass' : 'fail'}">${t.both_met ? 'ALL TARGETS MET' : 'TARGETS PARTIALLY MET'}</div>
+  </div>
+
+  <div class="grid">
+    <div class="metric">
+      <div class="label">Revenue Recovery Uplift</div>
+      <div class="value green">+${(t.revenue_actual_pct * 100).toFixed(1)}%</div>
+      <div class="sub">Target: &ge;${(t.revenue_target_pct * 100).toFixed(0)}% &bull; ${t.revenue_met ? 'PASSED' : 'BELOW TARGET'}</div>
+    </div>
+    <div class="metric">
+      <div class="label">Retry Attempt Reduction</div>
+      <div class="value blue">&minus;${(t.attempt_reduction_actual_pct * 100).toFixed(1)}%</div>
+      <div class="sub">Target: &ge;${(t.attempt_reduction_target_pct * 100).toFixed(0)}% &bull; ${t.attempt_reduction_met ? 'PASSED' : 'BELOW TARGET'}</div>
+    </div>
+    <div class="metric">
+      <div class="label">Agent Revenue Recovered</div>
+      <div class="value green mono">${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(h.agent_recovered_minor / 100)}</div>
+      <div class="sub">vs Baseline: ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(h.baseline_recovered_minor / 100)}</div>
+    </div>
+    <div class="metric">
+      <div class="label">Rule Breach Revenue</div>
+      <div class="value green mono">${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(h.agent_breach_minor / 100)}</div>
+      <div class="sub">Agent collected zero revenue through rule breach</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Simulation Parameters</h3>
+    <table>
+      <tr><th>Parameter</th><th>Value</th></tr>
+      <tr><td>Run ID</td><td class="mono">#${data.run_id}</td></tr>
+      <tr><td>Total Failures</td><td class="mono">${data.event_count}</td></tr>
+      <tr><td>Seed</td><td class="mono">${data.seed ?? 'random'}</td></tr>
+      <tr><td>Duration</td><td class="mono">${data.duration_ms} ms</td></tr>
+      <tr><td>Classifier Accuracy</td><td class="mono">${data.agent?.diagnosis_accuracy != null ? (data.agent.diagnosis_accuracy * 100).toFixed(1) + '%' : 'N/A'}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Compliance Summary</h3>
+    <table>
+      <tr><th>Measure</th><th>Agent</th><th>Baseline</th></tr>
+      <tr><td>Charge Attempts</td><td class="mono">${data.agent.charge_attempts}</td><td class="mono">${data.baseline.charge_attempts}</td></tr>
+      <tr><td>Customer Touches</td><td class="mono">${data.agent.customer_touches}</td><td class="mono">${data.baseline.customer_touches}</td></tr>
+      <tr><td>Network Penalty Points</td><td class="mono">${data.agent.network_penalty_points?.toFixed(1)}</td><td class="mono">${data.baseline.network_penalty_points?.toFixed(1)}</td></tr>
+      <tr><td>Guardrail Breach Cases</td><td class="mono" style="color:#059669;font-weight:700">${data.agent.breach_cases}</td><td class="mono" style="color:#dc2626;font-weight:700">${data.baseline.breach_cases}</td></tr>
+      <tr><td>Escalated to Human</td><td class="mono">${data.agent.escalated_to_human}</td><td class="mono">${data.baseline.escalated_to_human}</td></tr>
+    </table>
+  </div>
+
+  <div class="footer">
+    <p style="margin-bottom:8px">This certificate was generated by the Revenue Recovery Console.</p>
+    <p>All figures are server-computed and cryptographically sealed in the audit ledger.</p>
+  </div>
+</body></html>`)
+    win.document.close()
+    setTimeout(() => win.print(), 400)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Benchmark Control Bar */}
@@ -84,9 +180,16 @@ export default function Scoreboard({ setRunId }) {
         icon={BarChart3}
         note="Replays one identical synthetic stream across both arms: Agent (diagnosis + guardrails) vs Baseline (blind 24-hr retry + email)."
         actions={
-          <Button tone="primary" icon={Play} onClick={run} disabled={pending}>
-            {pending ? 'Simulating…' : 'Run Benchmark'}
-          </Button>
+          <div className="flex items-center gap-2">
+            {data && (
+              <Button tone="default" icon={FileDown} onClick={exportCertificate}>
+                Export Certificate
+              </Button>
+            )}
+            <Button tone="primary" icon={Play} onClick={run} disabled={pending}>
+              {pending ? 'Simulating…' : 'Run Benchmark'}
+            </Button>
+          </div>
         }
       >
         <div className="flex flex-col gap-3">

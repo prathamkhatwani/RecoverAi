@@ -526,7 +526,7 @@ def _sse(event: str, data: dict) -> str:
 
 @app.get("/api/stream")
 async def stream_live(
-    event_count: int = Query(40, ge=1, le=400),
+    event_count: int = Query(40, ge=1, le=1000),
     seed: int | None = None,
     use_llm: bool = True,
     interval_ms: int = Query(220, ge=0, le=5000),

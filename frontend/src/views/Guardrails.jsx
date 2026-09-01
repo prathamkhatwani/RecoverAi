@@ -4,6 +4,7 @@ import { useApi } from '../lib/useApi'
 import { formatMinor, hours, num } from '../lib/format'
 import { GUARDRAIL_CATEGORIES, action, verdict as verdictOf } from '../lib/vocab'
 import { Empty, ErrorNote, Loading, Panel, Pill, Table, TD, TH, Button } from '../components/ui'
+import GauntletWaterfall from '../components/GauntletWaterfall'
 import {
   ShieldAlert,
   ShieldCheck,
@@ -89,6 +90,15 @@ export default function Guardrails({ runId, onNavigate }) {
           )}
         </div>
         {note && <p className="mt-3 border-t border-rule pt-2.5 text-[12px] leading-relaxed text-ink-soft">{note}</p>}
+      </Panel>
+
+      {/* Visual Gauntlet Pipeline */}
+      <Panel
+        title="Visual Safety Pipeline"
+        icon={Eye}
+        note="Animated visualization of how each payment failure flows through the 6-stage guardrail gauntlet before any action is dispatched."
+      >
+        <GauntletWaterfall animating />
       </Panel>
 
       {/* Config Dials Grid */}
